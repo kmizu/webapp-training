@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="filters">
+  <form
+    hx-get="/partials/list"
+    hx-target="#todo-list"
+    hx-trigger="change from:input[name='filter'], submit, keyup changed delay:300ms from:input[name='q']"
+    hx-include="this"
+  >
+    <label><input type="radio" name="filter" value="all"  {% if filter=='all'  %}checked{% endif %}> 全て</label>
+    <label><input type="radio" name="filter" value="open" {% if filter=='open' %}checked{% endif %}> 未完了</label>
+    <label><input type="radio" name="filter" value="done" {% if filter=='done' %}checked{% endif %}> 完了</label>
+    <input type="search" name="q" value="{{ q }}" placeholder="検索..." autocomplete="off">
+  </form>
+</section>
+
+<section id="todo-list">
+  {% include "_list.html" %}
+</section>
+
+<section class="add">
+  <form
+    hx-post="/htmx/todos"
+    hx-target="#todo-list"
+    hx-on::after-request="this.reset()"
+  >
+    <input type="text" name="title" required placeholder="やること..." maxlength="200">
+    <input type="date" name="due_on">
+    <select name="priority" aria-label="優先度">
+      <option value="1">高</option>
+      <option value="2" selected>中</option>
+      <option value="3">低</option>
+    </select>
+    <button type="submit">追加</button>
+  </form>
+</section>
+{% endblock %}

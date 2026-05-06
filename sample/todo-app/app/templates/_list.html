@@ -1,0 +1,21 @@
+{% if todos|length == 0 %}
+  <p class="empty">該当する ToDo はありません。</p>
+{% else %}
+<table class="todos">
+  <thead>
+    <tr>
+      <th>状態</th>
+      <th>やること</th>
+      <th>期限</th>
+      <th>優先</th>
+      <th>タグ</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in todos %}
+      {% include "_row.html" %}
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}

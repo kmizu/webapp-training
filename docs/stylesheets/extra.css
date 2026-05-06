@@ -1,0 +1,27 @@
+/* 行間と読みやすさを少し調整。重厚長大にしないため最小限。 */
+.md-typeset {
+  font-size: 0.85rem;
+  line-height: 1.75;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  letter-spacing: 0.02em;
+}
+
+.md-typeset code {
+  font-feature-settings: "calt" 0;
+}
+
+/* 「学習ポイント」用のサイドノート */
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-left-width: 4px;
+}
+
+/* 表のセル余白 */
+.md-typeset table:not([class]) th,
+.md-typeset table:not([class]) td {
+  padding: 0.6em 0.8em;
+}

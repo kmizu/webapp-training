@@ -1,0 +1,92 @@
+site_name: Python + PostgreSQL ToDoアプリ研修
+site_description: Python と PostgreSQL の基礎を踏まえて、小さな ToDo アプリを段階的に作る研修テキスト
+site_author: 水島宏太
+site_url: https://kmizu.github.io/webapp-training/
+
+repo_url: https://github.com/kmizu/webapp-training
+repo_name: kmizu/webapp-training
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: ja
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: ダークモードに切り替え
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: ライトモードに切り替え
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - search.suggest
+    - search.highlight
+  font:
+    text: Noto Sans JP
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - footnotes
+  - md_in_html
+  - tables
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+plugins:
+  - search:
+      lang:
+        - ja
+        - en
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - はじめに: index.md
+  - 第0章 環境構築: 00-setup.md
+  - 第1章 Pythonのおさらい: 01-python-recap.md
+  - 第2章 PostgreSQLのおさらい: 02-postgres-recap.md
+  - 第3章 PythonとDBをつなぐ: 03-connect-db.md
+  - 第4章 ToDoアプリの設計: 04-design.md
+  - 第5章 データアクセス層を作る: 05-data-layer.md
+  - 第6章 Web APIを作る: 06-web-api.md
+  - 第7章 画面を作る: 07-ui.md
+  - 第8章 仕上げと公開: 08-finishing.md
+  - 付録A SQLチートシート: appendix-sql.md
+  - 付録B 用語集: appendix-glossary.md

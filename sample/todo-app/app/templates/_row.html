@@ -1,0 +1,27 @@
+<tr id="todo-{{ t.id }}" class="{% if t.done %}done{% endif %}">
+  <td>
+    <button
+      class="toggle"
+      aria-label="完了切替"
+      hx-post="/htmx/todos/{{ t.id }}/toggle"
+      hx-target="#todo-{{ t.id }}"
+      hx-swap="outerHTML"
+    >{% if t.done %}☑{% else %}☐{% endif %}</button>
+  </td>
+  <td class="title">{{ t.title }}</td>
+  <td>{{ t.due_on or '—' }}</td>
+  <td>{{ PRIORITY_LABEL[t.priority] }}</td>
+  <td class="tags">
+    {% for g in t.tags %}<span class="tag">{{ g.name }}</span>{% endfor %}
+  </td>
+  <td>
+    <button
+      class="del"
+      aria-label="削除"
+      hx-delete="/htmx/todos/{{ t.id }}"
+      hx-target="#todo-{{ t.id }}"
+      hx-swap="outerHTML"
+      hx-confirm="削除してええ？"
+    >×</button>
+  </td>
+</tr>

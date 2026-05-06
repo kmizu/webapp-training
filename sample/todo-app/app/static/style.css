@@ -1,0 +1,105 @@
+* { box-sizing: border-box; }
+body {
+  font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  margin: 0;
+  background: #f7f7f9;
+  color: #222;
+  line-height: 1.6;
+}
+header, main, footer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+header h1 { margin: 8px 0; font-size: 1.5rem; }
+
+.filters form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.filters input[type="search"] {
+  flex: 1;
+  min-width: 160px;
+  padding: 6px 8px;
+  border: 1px solid #ccd;
+  border-radius: 6px;
+}
+
+.todos {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.todos th, .todos td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  vertical-align: middle;
+}
+.todos th { font-size: 0.85em; color: #666; background: #fafafc; }
+.todos tr.done .title { text-decoration: line-through; color: #888; }
+.toggle, .del {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-size: 1.1em;
+  padding: 4px 8px;
+}
+.toggle:focus-visible, .del:focus-visible {
+  outline: 2px solid #88a; outline-offset: 2px;
+}
+.del { color: #b00020; }
+
+.empty {
+  text-align: center;
+  color: #888;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.add form {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.add input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 8px;
+  border: 1px solid #ccd;
+  border-radius: 6px;
+}
+.add input[type="date"], .add select {
+  padding: 6px 8px;
+  border: 1px solid #ccd;
+  border-radius: 6px;
+}
+.add button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #4a5cc8;
+  color: #fff;
+  cursor: pointer;
+}
+.add button:hover { background: #3a4cb8; }
+
+.tag {
+  display: inline-block;
+  font-size: 0.78em;
+  padding: 1px 8px;
+  margin-right: 4px;
+  background: #eef;
+  border-radius: 999px;
+  color: #449;
+}
+
+footer { text-align: center; color: #888; }
