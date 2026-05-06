@@ -79,14 +79,32 @@ extra_css:
 
 nav:
   - はじめに: index.md
-  - 第0章 環境構築: 00-setup.md
-  - 第1章 Pythonのおさらい: 01-python-recap.md
-  - 第2章 PostgreSQLのおさらい: 02-postgres-recap.md
-  - 第3章 PythonとDBをつなぐ: 03-connect-db.md
-  - 第4章 ToDoアプリの設計: 04-design.md
-  - 第5章 データアクセス層を作る: 05-data-layer.md
-  - 第6章 Web APIを作る: 06-web-api.md
-  - 第7章 画面を作る: 07-ui.md
-  - 第8章 仕上げと公開: 08-finishing.md
-  - 付録A SQLチートシート: appendix-sql.md
-  - 付録B 用語集: appendix-glossary.md
+  - Part 1 復習:
+      - 第0章 環境構築: 00-setup.md
+      - 第1章 Pythonのおさらい① 型ヒントとdataclass: 01-python-types.md
+      - 第2章 Pythonのおさらい② with・モジュール・pytest: 02-python-context.md
+      - 第3章 PostgreSQLのおさらい① DDL/DML/SELECT: 03-postgres-ddl-dml.md
+      - 第4章 PostgreSQLのおさらい② JOIN・集約・トランザクション: 04-postgres-join-tx.md
+  - Part 2 PythonとDBをつなぐ:
+      - 第5章 psycopg入門 接続と基本のCRUD: 05-psycopg-basics.md
+      - 第6章 プレースホルダとトランザクション: 06-psycopg-tx.md
+      - 第7章 dict_rowとコネクションプール: 07-psycopg-pool.md
+  - Part 3 ToDoアプリの設計:
+      - 第8章 要件・画面・API設計: 08-design-app.md
+      - 第9章 テーブル設計とマイグレーション: 09-design-db.md
+  - Part 4 データアクセス層:
+      - 第10章 ドメインモデルとリポジトリ（Read系）: 10-data-read.md
+      - 第11章 リポジトリ（Write系）とタグの多対多: 11-data-write.md
+      - 第12章 データアクセス層のテスト: 12-data-tests.md
+  - Part 5 Web API:
+      - 第13章 FastAPI入門 起動とDI: 13-api-fastapi.md
+      - 第14章 CRUD API実装とテスト: 14-api-crud.md
+  - Part 6 画面:
+      - 第15章 Jinja2でHTML: 15-ui-jinja2.md
+      - 第16章 htmxで動的UI: 16-ui-htmx.md
+  - Part 7 仕上げ:
+      - 第17章 設定・ログ・例外ハンドリング: 17-finishing.md
+      - 第18章 公開先と最終課題: 18-deploy.md
+  - 付録:
+      - 付録A SQLチートシート: appendix-sql.md
+      - 付録B 用語集: appendix-glossary.md

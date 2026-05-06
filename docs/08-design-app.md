@@ -1,10 +1,18 @@
-# 第4章 ToDoアプリの設計
+# 第8章 要件・画面・API設計
 
-コードを書く前に、**何を作るか**と**どう分けるか**を決めます。
+コードを書く前に、**何を作るか**を決めます。
 設計を端折ると、あとで「やっぱりこのカラムが要る」「画面の作り直し」が起きます。
 時間をかけてやる必要はないですが、**通しで一回考えておく**ことが大切です。
 
-## 4.1 要件（最低限の仕様）
+この章で決めるもの:
+
+- 機能要件 / 非機能要件 / 「やらないこと」
+- 画面のラフ
+- API の表
+
+DB 側の設計（テーブル・マイグレーション）は次章で扱います。
+
+## 8.1 要件（最低限の仕様）
 
 このアプリは **個人で使う ToDo リスト** とします。
 複数人で共有することは考えません（ユーザー認証は範囲外）。
@@ -35,7 +43,7 @@
     やる機能だけを書いていると、つい「あ、これも要るかも」が増えていきます。
     **「これはやらない」と紙に書く**だけで、ぐっと迷いが減ります。
 
-## 4.2 ユースケース図（言葉で）
+## 8.2 ユースケース図（言葉で）
 
 ユーザーは 1 人なので、シンプルに:
 
@@ -48,7 +56,7 @@
           └── タグを付ける / 外す
 ```
 
-## 4.3 画面設計（軽く）
+## 8.3 画面設計（軽く）
 
 ページは **1 枚** にします。
 ヘッダ・フィルタ・リスト・追加フォームの 4 ブロック。
@@ -69,60 +77,9 @@
 ```
 
 UI は htmx でゆるく動かすので、**ボタンを押したら部分的に書き換える**動きにします。
+（具体的な実装は第15・16章）
 
-## 4.4 データ設計
-
-ER 図はテキストで:
-
-```text
-[todos]              [todo_tags]            [tags]
- id   PK   ─────┐    todo_id  PK,FK ──┐     id    PK
- title          ├──→                   │     name  UNIQUE
- done           │    tag_id   PK,FK ──┘
- due_on         │
- priority       │
- created_at     │
- updated_at     │
-                ↑（多対多）
-```
-
-具体的なテーブル定義:
-
-```sql
-CREATE TABLE todos (
-    id          SERIAL      PRIMARY KEY,
-    title       TEXT        NOT NULL CHECK (length(title) > 0),
-    done        BOOLEAN     NOT NULL DEFAULT FALSE,
-    due_on      DATE,
-    priority    SMALLINT    NOT NULL DEFAULT 2 CHECK (priority BETWEEN 1 AND 3),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_todos_done_due ON todos (done, due_on);
-
-CREATE TABLE tags (
-    id   SERIAL PRIMARY KEY,
-    name TEXT   UNIQUE NOT NULL CHECK (length(name) > 0)
-);
-
-CREATE TABLE todo_tags (
-    todo_id INTEGER NOT NULL REFERENCES todos(id) ON DELETE CASCADE,
-    tag_id  INTEGER NOT NULL REFERENCES tags(id)  ON DELETE CASCADE,
-    PRIMARY KEY (todo_id, tag_id)
-);
-```
-
-設計のポイント:
-
-- **`CHECK` 制約** で「タイトルは空NG」「優先度は1-3」を DB レベルで担保。アプリのバグで変な値を入れても DB が止めてくれます。
-- **`ON DELETE CASCADE`** で「ToDo を消したら関連する `todo_tags` も消える」ようにします。これがないと孤児レコードが残ります。
-- **`idx_todos_done_due`** は「未完了で期限順に並べる」検索が頻繁なので、その複合インデックスを張っています。
-
-!!! note "なぜ priority は SMALLINT？"
-    優先度は 1〜3 の小さな整数なので、4 バイトの `INTEGER` ではなく 2 バイトの `SMALLINT` で十分です。何万件もある場合のサイズ差はばかになりません。
-
-## 4.5 API 設計
+## 8.4 API 設計
 
 「画面 → サーバー」のやりとりを **小さな表** にしておきます。
 URL の付け方は「**リソース指向**」を意識します（複数形 + 動詞は HTTP メソッド）。
@@ -163,7 +120,7 @@ Tag {
 
     今回は「タイトルだけ変えたい」「優先度だけ変えたい」が普通なので `PATCH` を採用します。
 
-## 4.6 ディレクトリ構成
+## 8.5 ディレクトリ構成
 
 研修で実際に使う構成です。
 
@@ -172,6 +129,7 @@ sample/todo-app/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI アプリ起動点
+│   ├── config.py            # 設定（環境変数）
 │   ├── db.py                # 接続管理（プール）
 │   ├── models.py            # ドメインモデル（dataclass）
 │   ├── schemas.py           # Pydantic スキーマ（API用）
@@ -182,20 +140,12 @@ sample/todo-app/
 │   │   ├── pages.py         # GET / の HTML 返却
 │   │   └── todos.py         # /api/todos の CRUD
 │   ├── templates/           # Jinja2
-│   │   ├── base.html
-│   │   └── _list.html       # 部分テンプレート（htmx で差し替え）
-│   ├── static/
-│   │   └── style.css
-│   └── cli.py               # init-db などの管理コマンド
+│   └── static/              # CSS
 ├── migrations/
 │   ├── 001_init.sql
 │   └── 002_seed.sql
 ├── tests/
-│   ├── conftest.py
-│   ├── test_repositories.py
-│   └── test_api.py
-├── pyproject.toml
-└── .env.example
+└── pyproject.toml
 ```
 
 レイヤーの考え方:
@@ -220,38 +170,13 @@ PostgreSQL
 
 研修では **services は薄く** して、ほぼ routers ↔ repositories で完結します。
 
-## 4.7 マイグレーション戦略
-
-スキーマ変更を **連番付きの SQL ファイル**で管理します。
-今回は Alembic などのツールを使わず、手書きの最小実装でやります。
-
-```text
-migrations/
-├── 001_init.sql
-├── 002_seed.sql
-└── ...
-```
-
-`app.cli init-db` を実行すると、`migrations/` 以下の SQL を **連番順に**実行する仕組みにします。**いつどのファイルまで適用したか**を記録するテーブル `schema_versions` を別に持ちます。
-
-```sql
-CREATE TABLE IF NOT EXISTS schema_versions (
-    version    TEXT        PRIMARY KEY,
-    applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
-
-!!! tip "実務では Alembic / Flyway を使う"
-    本研修では学習目的でシンプルなスクリプトを書きますが、
-    実務では **Alembic（Python）** や **Flyway（言語非依存）** など
-    実績のあるマイグレーションツールを使ってください。
-
 ## やってみよう
 
-1. 上のテーブル定義を `psql` で実際に作って、`\d todos` で構造を見る。
-2. 自分なら、ToDo に **どんなカラムを追加したいか** 3 つ挙げる
-   （例: 説明文 `description`、繰り返し設定 `repeat_kind`、リマインド時刻 `remind_at`）。
-3. その追加カラムを **DB に追加する `ALTER TABLE` 文**を書いてみる。
+1. 自分なら ToDo に **どんなカラムを追加したいか** 3 つ挙げる
+   （例: 説明文、繰り返し設定、リマインド時刻）。
+2. その追加カラムに対して、**API としてどうリクエストを受け取るか**を、
+   この章の表に行を 1 つ足す形で書いてみる。
+3. 「やらないこと」のリストに、自分なら何を追加するか考えてみる。
 
-次は [第 5 章 データアクセス層を作る](05-data-layer.md) で、
-**この設計を実際に Python のコードに落とし込み**ます。
+次は [第 9 章 テーブル設計とマイグレーション](09-design-db.md) で、
+**DB 側の設計**をして、それをコードで管理する方法を作ります。

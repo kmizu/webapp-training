@@ -1,39 +1,10 @@
-# 第6章 Web APIを作る
+# 第14章 CRUD API実装とテスト
 
-データ層ができたので、その上に **HTTP API** を載せます。
-本研修では [FastAPI](https://fastapi.tiangolo.com/) を使います。
-理由はシンプルで、**型ヒントがそのまま入力チェックと OpenAPI ドキュメントになる**から。
+前章で FastAPI の基本と DI が動きました。
+この章では **ToDo の CRUD すべて**を実装し、Pydantic でバリデーションを入れ、
+最後に TestClient で **API のテスト**まで書きます。
 
-## 6.1 FastAPI の最小構成
-
-`app/main.py` の最初の形:
-
-```python
-# app/main.py
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-
-from .routers import pages, todos
-
-app = FastAPI(title="ToDo App", version="0.1.0")
-
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
-
-app.include_router(pages.router)
-app.include_router(todos.router, prefix="/api")
-```
-
-起動:
-
-```bash
-uv run uvicorn app.main:app --reload
-# http://127.0.0.1:8000/         画面（後でJinjaで作る）
-# http://127.0.0.1:8000/docs     Swagger UI（自動生成のAPIドキュメント）
-```
-
-## 6.2 入出力スキーマ（schemas.py）
+## 14.1 入出力スキーマ（schemas.py）
 
 API の **入力**と**出力**を Pydantic で定義します。
 ドメインモデル（dataclass）と分けることで、API の都合と DB の都合を切り分けます。
@@ -91,14 +62,14 @@ class TodoListQuery(BaseModel):
     **dataclass や ORM オブジェクトから直接変換**できます。
     つまり `TodoOut.model_validate(my_todo_dataclass)` のように書けます。
 
-## 6.3 ルーター（routers/todos.py）
+## 14.2 ルーター本体（routers/todos.py）
 
-実装の中身です。**FastAPI の依存性注入**で接続を渡すのがコツ。
+`Conn` の依存（前章）はそのまま使います。
 
 ```python
 # app/routers/todos.py
 from collections.abc import Iterator
-from typing import Annotated
+from typing import Annotated, Any
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -111,12 +82,14 @@ router = APIRouter(tags=["todos"])
 
 
 def get_conn() -> Iterator[psycopg.Connection]:
-    """リクエスト毎にプールから接続を借りる依存。"""
     with connection() as conn:
         yield conn
 
 
 Conn = Annotated[psycopg.Connection, Depends(get_conn)]
+
+
+_UNSET: Any = object()
 
 
 @router.get("/todos", response_model=list[TodoOut])
@@ -155,12 +128,7 @@ def get_todo(todo_id: int, conn: Conn):
 @router.patch("/todos/{todo_id}", response_model=TodoOut)
 def patch_todo(todo_id: int, payload: TodoPatch, conn: Conn):
     fields = payload.model_dump(exclude_unset=True)
-    if "due_on" in fields:
-        # 「指定なし」と「明示的に NULL」を区別するため、
-        # PATCH に due_on キーがあるときだけ ... 以外を渡す
-        due_on_arg: object = fields["due_on"]
-    else:
-        due_on_arg = ...
+    due_on_arg: Any = fields["due_on"] if "due_on" in fields else _UNSET
 
     updated = repo.update_todo(
         conn,
@@ -189,9 +157,20 @@ def delete_todo(todo_id: int, conn: Conn):
     if not repo.delete_todo(conn, todo_id):
         raise HTTPException(status_code=404, detail="todo not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/tags")
+def list_tags(conn: Conn):
+    return [{"id": g.id, "name": g.name} for g in repo.list_all_tags(conn)]
 ```
 
-## 6.4 動作確認
+ポイント:
+
+- **`exclude_unset=True`** で「リクエストに含まれていたキーだけ」を取り出し、
+  そのうえで `due_on` が含まれていたかどうかを `_UNSET` 判定で repository に渡す。
+- ステータスコードは作成 201、削除 204。これは REST の慣習。
+
+## 14.3 動作確認
 
 サーバーを立ち上げて、`curl` で叩いてみます。
 
@@ -225,7 +204,7 @@ curl -s -X DELETE http://127.0.0.1:8000/api/todos/1 -i
 ブラウザで `http://127.0.0.1:8000/docs` を開くと、
 **Swagger UI** で同じ API を画面から試せます。
 
-## 6.5 API のテスト
+## 14.4 API のテスト
 
 `tests/test_api.py`:
 
@@ -260,14 +239,45 @@ def test_toggle_changes_done(client):
     assert r.json()["done"] is True
 
 
+def test_patch_clears_due_on(client):
+    new = client.post(
+        "/api/todos",
+        json={"title": "PATCHで期限消す", "due_on": "2026-06-15"},
+    ).json()
+    assert new["due_on"] == "2026-06-15"
+
+    r = client.patch(f"/api/todos/{new['id']}", json={"due_on": None})
+    assert r.status_code == 200
+    assert r.json()["due_on"] is None
+
+
 def test_validation_fails_on_empty_title(client):
     r = client.post("/api/todos", json={"title": ""})
+    assert r.status_code == 422
+
+
+def test_validation_fails_on_bad_priority(client):
+    r = client.post("/api/todos", json={"title": "x", "priority": 5})
     assert r.status_code == 422
 
 
 def test_404_on_unknown_id(client):
     r = client.patch("/api/todos/9999999", json={"title": "no-op"})
     assert r.status_code == 404
+
+
+def test_delete_removes(client):
+    new = client.post("/api/todos", json={"title": "消す"}).json()
+    r = client.delete(f"/api/todos/{new['id']}")
+    assert r.status_code == 204
+    r2 = client.get(f"/api/todos/{new['id']}")
+    assert r2.status_code == 404
+```
+
+実行:
+
+```bash
+uv run pytest -v
 ```
 
 !!! warning "テスト DB と本物 DB"
@@ -276,13 +286,13 @@ def test_404_on_unknown_id(client):
     本研修ではこれで十分ですが、CI でガチに分離したい場合は `tododb_test`
     のような別 DB を用意し、各テストの後にクリーンアップする仕組みを入れてください。
 
-## 6.6 エラーハンドリングを少し整える
+## 14.5 補足：psycopg のエラーをアプリ全体で受ける
 
-FastAPI は `HTTPException` を投げれば自動でエラー JSON を返してくれますが、
+`HTTPException` を投げれば自動でエラー JSON を返してくれますが、
 **全体で統一したい**ときは例外ハンドラを書きます。
 
 ```python
-# app/main.py（追記）
+# app/main.py（追記例）
 from fastapi import Request
 from fastapi.responses import JSONResponse
 import psycopg.errors as pgerr
@@ -292,24 +302,20 @@ import psycopg.errors as pgerr
 async def unique_violation_handler(_: Request, exc: pgerr.UniqueViolation):
     return JSONResponse(
         status_code=409,
-        content={"detail": "重複エラー", "diag": str(exc.diag.message_primary)},
-    )
-
-
-@app.exception_handler(pgerr.CheckViolation)
-async def check_violation_handler(_: Request, exc: pgerr.CheckViolation):
-    return JSONResponse(
-        status_code=400,
-        content={"detail": "値の制約違反", "diag": str(exc.diag.message_primary)},
+        content={"detail": "重複エラー"},
     )
 ```
 
+詳しくは第17章で扱います。
+
 ## やってみよう
 
-1. `/api/tags` を実装する（一覧を返すだけでOK）。
-2. `/api/todos` の **クエリパラメータに `priority` を追加**する（指定された優先度のみ返す）。
-3. **入力バリデーションを破る**リクエストを投げて、422 が返ることを確認する。
-   例: `priority=5` や `title=""`。
+1. `/api/todos` の **クエリパラメータに `priority` を追加**する（指定された優先度のみ返す）。
+2. **入力バリデーションを破る**リクエストを投げて、422 が返ることを確認する。
+   例: `priority=5` や `title=""`、`due_on="2026-13-40"`。
+3. `test_api.py` に **新しいテストを 1 つ追加**する。
+   例: 「title だけ送って作成すると、priority が 2 で作られる」。
 
-次は [第 7 章 画面を作る](07-ui.md) で、
-**Jinja2 + htmx で軽量な画面**を組みます。
+これで Part 5 はおしまいです。
+次は [第 15 章 Jinja2でHTML](15-ui-jinja2.md) で、
+**画面**を作っていきます。

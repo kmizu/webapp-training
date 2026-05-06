@@ -165,5 +165,5 @@ SELECT version();
     ```
 
 これで環境構築は終わりです。
-次は [第 1 章 Pythonのおさらい](01-python-recap.md) で、
-**研修で使う Python の機能を一気に確認**します。
+次は [第 1 章 Pythonのおさらい① 型ヒントとdataclass](01-python-types.md) から、
+**研修で使う Python の機能を 2 章に分けて**確認します。
