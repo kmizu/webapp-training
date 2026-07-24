@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from .. import repositories as repo
 from ..db import connection
+from ..repositories import _UNSET
 from ..schemas import TodoCreate, TodoListQuery, TodoOut, TodoPatch
 
 router = APIRouter(tags=["todos"])
@@ -17,9 +18,6 @@ def get_conn() -> Iterator[psycopg.Connection]:
 
 
 Conn = Annotated[psycopg.Connection, Depends(get_conn)]
-
-
-_UNSET: Any = object()
 
 
 @router.get("/todos", response_model=list[TodoOut])

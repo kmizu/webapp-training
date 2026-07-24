@@ -23,6 +23,8 @@ docker exec -it webapp-training-db psql -U todo -d tododb
 
 ## A.2 DDL（テーブル作成・変更）
 
+参考: [DDL（テーブル定義）](https://www.postgresql.org/docs/current/ddl.html)
+
 ```sql
 CREATE TABLE name (
     id          SERIAL PRIMARY KEY,
@@ -41,6 +43,8 @@ DROP TABLE name;
 DROP TABLE IF EXISTS name;
 ```
 
+`DROP TABLE` や `ALTER TABLE` は本番データに直接効くので、事前にバックアップを取ってから実行しましょう。
+
 インデックス:
 
 ```sql
@@ -50,6 +54,8 @@ DROP INDEX idx_name_col;
 ```
 
 ## A.3 DML（データ操作）
+
+参考: [DML（データ操作）](https://www.postgresql.org/docs/current/dml.html)
 
 ```sql
 -- 追加
@@ -73,7 +79,11 @@ INSERT INTO tags (name) VALUES ('家事')
 ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name;
 ```
 
+`UPDATE` / `DELETE` は `WHERE` を書き忘れると全行が対象になります。実行前に同じ条件で `SELECT` して対象行を確認する癖をつけましょう。
+
 ## A.4 SELECT の基本
+
+参考: [SELECT 文](https://www.postgresql.org/docs/current/sql-select.html)
 
 ```sql
 SELECT * FROM todos;
@@ -98,6 +108,8 @@ SELECT DISTINCT priority FROM todos;
 
 ## A.5 集約
 
+参考: [集約関数入門](https://www.postgresql.org/docs/current/tutorial-agg.html)
+
 ```sql
 SELECT COUNT(*) FROM todos;
 SELECT COUNT(*) FILTER (WHERE done = FALSE) FROM todos;
@@ -108,7 +120,11 @@ SELECT MAX(due_on), MIN(due_on) FROM todos;
 SELECT string_agg(title, ', ') FROM todos WHERE done = FALSE;
 ```
 
+`GROUP BY` していない列を `SELECT` に含めると `column must appear in the GROUP BY clause` エラーになります。
+
 ## A.6 JOIN
+
+参考: [テーブル式（JOIN）](https://www.postgresql.org/docs/current/queries-table-expressions.html)
 
 ```sql
 -- INNER JOIN（両方にあるものだけ）
@@ -129,7 +145,11 @@ SELECT a.title, b.title
  WHERE a.id <> b.id AND a.priority = b.priority;
 ```
 
+カンマ区切りで複数テーブルを並べる書き方は `WHERE` 条件を書き忘れると全組み合わせ（直積）になるので、基本は `JOIN ... ON` を使いましょう。
+
 ## A.7 サブクエリ
+
+参考: [サブクエリ式](https://www.postgresql.org/docs/current/functions-subquery.html)
 
 ```sql
 -- スカラサブクエリ（1行1列）
@@ -155,7 +175,11 @@ WITH urgent AS (
 SELECT COUNT(*) FROM urgent;
 ```
 
+スカラサブクエリが複数行を返すと `more than one row returned by a subquery` エラーになります。
+
 ## A.8 ビュー
+
+参考: [CREATE VIEW](https://www.postgresql.org/docs/current/sql-createview.html)
 
 ```sql
 CREATE VIEW v_open_todos AS
@@ -169,6 +193,8 @@ DROP VIEW v_open_todos;
 ```
 
 ## A.9 トランザクション
+
+参考: [トランザクション入門](https://www.postgresql.org/docs/current/tutorial-transactions.html)
 
 ```sql
 BEGIN;
@@ -186,6 +212,8 @@ INSERT INTO todos (title) VALUES ('b');
 ROLLBACK TO SAVEPOINT s1;   -- b だけ取り消し
 COMMIT;
 ```
+
+`BEGIN` したまま `COMMIT`/`ROLLBACK` を忘れると、トランザクションが開いたままになり他のクエリをロックし続けることがあります。
 
 ## A.10 関数（よく使うもの）
 
@@ -222,6 +250,8 @@ NULLIF(value, '')           -- 空文字なら NULL
 | `foreign key violation` | 親レコードがない、`ON DELETE CASCADE` を検討 |
 
 ## A.12 性能の最初のひと押し
+
+参考: [EXPLAIN](https://www.postgresql.org/docs/current/sql-explain.html)
 
 ```sql
 EXPLAIN SELECT * FROM todos WHERE done = FALSE ORDER BY due_on;

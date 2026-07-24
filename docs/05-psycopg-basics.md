@@ -1,6 +1,9 @@
 # 第5章 psycopg入門 接続と基本のCRUD
 
 ここからが本番です。**Python から PostgreSQL を操作する**方法を確認します。
+PostgreSQL はソケット越しに独自のプロトコルでやり取りするサーバーなので、
+Python の標準機能だけでは直接話しかけられません。そこで間を取り持つ
+**ドライバライブラリ**が必要になります。
 本研修では [`psycopg`](https://www.psycopg.org/psycopg3/) のバージョン 3 を使います。
 
 この章では「**接続して、SELECT/INSERT する**」までを扱います。
@@ -29,13 +32,20 @@ dependencies = [
 ]
 ```
 
+`psycopg-pool` や `fastapi` / `jinja2` などは後の章（第7章・第13章以降）で使うものです。
+今の時点では「そういうものも一緒に入っている」くらいの認識で構いません。
+この章で主役になるのは `psycopg` 本体だけです。
+
 !!! note "`psycopg[binary]` の `[binary]` とは"
     PostgreSQL のクライアントライブラリ（libpq）を **Python の wheel に同梱**してくれます。
     これがないと環境に依存して入らないことがあるので、研修では `[binary]` 付きを推奨します。
 
 ## 5.2 接続するいちばん簡単なコード
 
-接続情報は `DSN` という文字列にまとめます。
+接続情報は `DSN`（Data Source Name、接続文字列）という 1 本の文字列にまとめます。
+ホスト名やパスワードを毎回バラバラの引数で渡すのではなく `key=value` を並べて
+1 か所にまとめておくことで、設定ファイルや環境変数との受け渡しがしやすくなります
+（DSN の書き方は [psycopgの基本的な使い方](https://www.psycopg.org/psycopg3/docs/basic/usage.html) に一覧があります）。
 
 ```python
 # scripts/check_connection.py
@@ -56,8 +66,15 @@ with psycopg.connect(DSN) as conn:
 uv run python scripts/check_connection.py
 ```
 
+`psycopg.connect(DSN)` が作る `conn` は **コネクション**（PostgreSQL サーバーとの通信路そのもの）、
+`conn.cursor()` が作る `cur` は **カーソル**（SQL を送って結果を受け取るための手元の窓口）です。
+1 本のコネクションの中に複数のカーソルを開くこともできますが、この章ではひとまず
+「コネクション 1 つにつきカーソル 1 つ」で進めます。
+
 `with psycopg.connect(...)` を使うと、**ブロックを抜けるときに自動で接続が閉じる**
 だけでなく、**例外が起きていなければ COMMIT、起きていれば ROLLBACK** されます。
+接続を閉じ忘れると PostgreSQL 側にコネクションが残ったままになり、積み重なると
+やがて最大接続数に達して新しい接続ができなくなるので、これは地味に効いてくる保証です。
 これは psycopg v3 の親切設計のひとつです（詳細は次章で）。
 
 ## 5.3 SELECT で行を取り出す
@@ -81,9 +98,15 @@ with psycopg.connect(DSN) as conn, conn.cursor() as cur:
         print(row)   # tuple 形式で返る
 ```
 
-`fetchone()` は 1 行だけ取る、`fetchmany(n)` は n 行取る、`fetchall()` は全部取る。
+`cur.execute(...)` は SQL を実行するだけで、結果はいったん**カーソルの中に保持**
+されます。そこから `fetchone()`（1 行）・`fetchmany(n)`（n 行）・`fetchall()`
+（全行）で必要な分だけ取り出す、という二段構えです。
 **大量データに `fetchall()` を使わない** ようにだけ注意してください
-（メモリに全行載せる）。
+（メモリに全行載せる）。件数が多いときは `fetchmany(n)` で少しずつ処理するとよいでしょう。
+
+なお `row` の各要素は `SELECT` に書いた**カラムの順番そのまま**のタプルです。
+今回の例だと `row[0]` が `id`、`row[1]` が `title` になります。名前でアクセス
+したい場合は `dict_row`（第7章で扱います）を使うと読みやすくなります。
 
 ## 5.4 INSERT で行を追加する
 
@@ -95,10 +118,17 @@ with psycopg.connect(DSN) as conn, conn.cursor() as cur:
     )
 ```
 
-**プレースホルダ `%s`** で値を渡すのが超重要なポイント。
-詳しくは次章で扱いますが、**絶対に文字列連結や f-string で値を埋め込まないでください**。
+**プレースホルダ `%s`** で値を渡すのが超重要なポイントです。文字列連結で SQL を
+組み立てる代わりに `%s` へ値を渡すと、psycopg が Python の型（`str` / `int` /
+`bool` / `None` など）を見て、適切な形にエスケープ・変換してから SQL に埋め込んで
+くれます（[psycopgのパラメータの渡し方](https://www.psycopg.org/psycopg3/docs/basic/params.html)）。
+安全性の詳しい話（SQL インジェクション）は次章で扱いますが、
+**絶対に文字列連結や f-string で値を埋め込まないでください**。
 
-`RETURNING` を使えば、自動採番された `id` を取れます。
+`INSERT` を実行しただけでは、DB 側で自動採番された `id` が何になったかは
+Python 側にはわかりません。`RETURNING id` を付けると、**INSERT と同じ 1 回の
+やり取りで**生成された値を受け取れるので、わざわざ別の `SELECT` を投げて
+調べ直す必要がなくなります。
 
 ```python
 with psycopg.connect(DSN) as conn, conn.cursor() as cur:
@@ -135,7 +165,9 @@ with psycopg.connect(DSN) as conn, conn.cursor() as cur:
     )
 ```
 
-たくさん入れる場合は `executemany` の方が速いです。
+ループで 1 件ずつ `execute` すると、そのたびに Python と PostgreSQL の間で
+通信が発生します。`executemany` はまとめて送るぶん通信回数が減るので、
+たくさん入れる場合はその方が速いです。
 
 ## やってみよう
 
