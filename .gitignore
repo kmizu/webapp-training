@@ -33,3 +33,7 @@ dist/
 
 # Logs
 *.log
+
+# 読者の練習用ディレクトリ（テキストの指示で読者が作成する）
+practice/
+mytodo/
