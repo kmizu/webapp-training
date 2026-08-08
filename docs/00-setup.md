@@ -115,6 +115,16 @@ Docker Desktop を起動してからやり直してください（詳しくは�
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
     ```
 
+    期待される出力:
+
+    ```text
+    Downloading uv 0.x.x
+    Installing to C:\Users\<ユーザー名>\.local\bin
+      uv.exe
+      uvx.exe
+    everything's installed!
+    ```
+
 インストール後、**ターミナルを開き直して**（新しい PATH を読み込ませるため）確認します。
 
 ```bash
