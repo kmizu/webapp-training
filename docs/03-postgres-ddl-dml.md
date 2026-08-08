@@ -51,7 +51,7 @@
     **psql 独自のメタコマンド**（便利なショートカット）です。
     Python のコードからは使えないもの、と区別しておいてください。
 
-SQL は大きく 2 種類に分かれます。この分類を意識しておくと、
+SQL は大きく 2 種類にわかれます。この分類を意識しておくと、
 「今は器を作っているのか、中身をいじっているのか」が整理できます。
 
 - **DDL**（Data Definition Language）: テーブルの**形**を定義する。
@@ -59,7 +59,12 @@ SQL は大きく 2 種類に分かれます。この分類を意識しておく�
 - **DML**（Data Manipulation Language）: テーブルの**中身**を操作する。
   `INSERT`（追加）/ `SELECT`（参照）/ `UPDATE`（更新）/ `DELETE`（削除）
 
-この章では DDL から `CREATE TABLE` を、DML は 4 つすべてを扱います。
+なお、`SELECT` を **DQL**（Data Query Language）として DML から切り離して分類する
+流儀もあります。この章のタイトルに「DDL/DML/SELECT」と `SELECT` を並べているのは、
+その流儀に沿った表記です。どちらの分類を採っても SQL の書き方自体は変わらないので、
+「分類の仕方が複数ある」ことだけ頭の片隅に置いておいてください。
+
+この章では DDL から `CREATE TABLE` を、DML（DQL 含む）は 4 つすべてを扱います。
 
 ## 3.3 psql の基本操作
 
@@ -164,7 +169,7 @@ Did not find any relations.
 ToDo を保存するテーブルを作ります。
 [`CREATE TABLE`](https://www.postgresql.org/docs/current/sql-createtable.html) 文で、
 列の名前・型・制約をまとめて宣言します。次の SQL を psql に打ち込んでください
-（複数行に分かれていても、最後の `;` を打って Enter するまで実行されません）。
+（複数行にわかれていても、最後の `;` を打って Enter するまで実行されません）。
 
 ```sql
 CREATE TABLE todos (
@@ -345,7 +350,7 @@ INSERT INTO todos (title) VALUES ('歯医者の予約') RETURNING id, created_at
 INSERT 0 1
 ```
 
-自動採番された `id` がすぐわかるのがわかると思います。
+自動採番された `id` がその場で確認できると思います。
 `RETURNING` がないと「`INSERT` した直後にもう一度 `SELECT` して `id` を取得する」という
 書き方をしがちですが、それだと 2 回の問い合わせの間に別の行が挿入されて、
 狙った行を取り違えるおそれがあります。`RETURNING` なら 1 回の文で確実に取れます。
@@ -775,7 +780,7 @@ PostgreSQL コンテナが起動していません。リポジトリのルート
     ```
 
     `current_date + 7` のように、日付には整数を足して「何日後」を計算できます。
-    データが日付で書き死にしていないので、いつ実行しても「今日から 1 週間」の
+    条件を固定の日付で書き込んでいないので、いつ実行しても「今日から 1 週間」の
     意味になるのがポイントです。
 
 ### 問4 更新の before / after を確認する
@@ -823,26 +828,34 @@ PostgreSQL コンテナが起動していません。リポジトリのルート
 ### 問5 練習用の行を消して後片付け
 
 問1 で追加した行（`'練習用の行'`）を `DELETE` で消し、
-消えたことを `SELECT` で確認してください。
+消えたことを `SELECT` で確認してから確定してください。
 問1 の `RETURNING` で返ってきた `id` を `WHERE` に使うのが確実です。
+本文と同じく、`BEGIN` で始めて、**削除の確認ができてから `COMMIT`** してください。
 
 ??? example "解答例"
 
     ```sql
+    BEGIN;
     DELETE FROM todos WHERE id = 8;   -- 問1で返ってきた id に合わせる
     SELECT id, title FROM todos WHERE priority = 3;
+    COMMIT;
     ```
 
     期待される出力:
 
     ```text
+    BEGIN
     DELETE 1
      id | title 
     ----+-------
     (0 rows)
+
+    COMMIT
     ```
 
-    `DELETE 1` で 1 行だけ消え、確認の `SELECT` も `(0 rows)` になりました。
+    `DELETE 1` で 1 行だけ消え、確認の `SELECT` も `(0 rows)` になったことを
+    見てから `COMMIT` で確定しています。もし `DELETE 1` ではなく `DELETE 7`
+    のような想定外の件数が出たら、`COMMIT` ではなく `ROLLBACK;` で取り消せます。
     `id` で指定したので、他の行にはまったく影響していません。
     「主キーで 1 行を指定して操作する」という、安全な更新・削除の基本形です。
 
