@@ -84,6 +84,7 @@ Server: Docker Desktop x.x.x
 ```
 
 「Client」と「Server」の両方が表示されれば OK です。
+なお Linux（Docker Engine）では Server の行は `Server: Docker Engine - Community` のように表示されます。
 `Cannot connect to the Docker daemon` のようなエラーが出た場合は Docker が起動していないので、
 Docker Desktop を起動してからやり直してください（詳しくは「つまずきポイント」）。
 
@@ -125,7 +126,8 @@ Docker Desktop を起動してからやり直してください（詳しくは�
     everything's installed!
     ```
 
-インストール後、**ターミナルを開き直して**（新しい PATH を読み込ませるため）確認します。
+インストール後、**ターミナルを開き直して**確認します。これは、コマンドを探す場所のリスト
+（**PATH**）に uv のインストール先が追加されたことを、起動中のターミナルに認識させるためです。
 
 ```bash
 uv --version
@@ -152,17 +154,9 @@ Installed Python 3.12.x in x.xxs
  + cpython-3.12.x-<プラットフォーム>
 ```
 
-最後に Python のバージョンを確認します。
-
-```bash
-python --version
-```
-
-期待される出力:
-
-```text
-Python 3.12.x
-```
+Python の動作確認は、次の 0.5 で仮想環境を作ってから行います。
+`uv python install` は `python` コマンドを直接使えるようにするものではないため、
+この時点で `python --version` を打っても反応がない（別の Python が応答する）場合があります。
 
 !!! note "すでに Python が入っている場合"
     3.12 以上ならそのまま使ってかまいません。3.11 以下しかない場合は、
@@ -178,14 +172,14 @@ Python 3.12.x
 uv sync --group docs
 ```
 
-期待される出力（パッケージ数や所要時間は環境によって異なります）:
+期待される出力（所要時間のみ環境によって異なります。パッケージ数は `uv.lock` で固定です）:
 
 ```text
-Using CPython 3.12.x
+Using CPython 3.12.x interpreter at: /home/<ユーザー名>/.local/share/uv/python/...
 Creating virtual environment at: .venv
-Resolved 25 packages in xxxms
-Downloaded 20 packages in x.xxs
-Installed 20 packages in xxms
+Resolved 30 packages in xxxms
+Prepared 29 packages in x.xxs
+Installed 29 packages in xxms
  + mkdocs==1.6.x
  + mkdocs-material==9.5.x
  ...
@@ -193,6 +187,21 @@ Installed 20 packages in xxms
 
 これで `.venv/` という仮想環境が作られ、テキストをローカルで表示するためのライブラリ
 （[MkDocs Material](https://squidfunk.github.io/mkdocs-material/)）が入りました。
+
+ここで Python のバージョンを確認しておきましょう。仮想環境の中の Python を実行するので、
+`uv run` 経由で打ちます。
+
+```bash
+uv run python --version
+```
+
+期待される出力:
+
+```text
+Python 3.12.x
+```
+
+この研修では、Python のバージョン確認は常にこの `uv run python --version` で行います。
 
 動作確認として、このテキストをローカルでプレビューしてみましょう。
 
@@ -219,8 +228,9 @@ INFO    -  [xx:xx:xx] Serving on http://127.0.0.1:8000/
 
 ## 0.6 PostgreSQL を起動する
 
-リポジトリのルートには `docker-compose.yml` があります。これは「どのイメージを、
-どんな環境変数で、どのポートで起動するか」をまとめた設定ファイルで、
+リポジトリのルートには `docker-compose.yml` があります。これは「どのイメージ
+（コンテナのもとになる設計図のようなもの）を、どんな環境変数で、どのポートで起動するか」を
+まとめた設定ファイルで、
 [Docker Compose](https://docs.docker.com/compose/) がこれを読んで PostgreSQL コンテナを立ち上げます。
 `docker run` の長いオプションを毎回打つ代わりに、このファイルさえあれば誰でも同じ環境を再現できます。
 
@@ -252,10 +262,11 @@ docker compose ps
 
 ```text
 NAME                 IMAGE         STATUS                   PORTS
-webapp-training-db   postgres:16   Up xx seconds (healthy)   0.0.0.0:5432->5432/tcp
+webapp-training-db   postgres:16   Up xx seconds (healthy)   0.0.0.0:5432->5432/tcp, ...
 ```
 
 `STATUS` が `Up`（しばらくすると `(healthy)` が付きます）になっていれば OK です。
+`PORTS` 列の `...` は IPv6 向けの表示（`:::5432->5432/tcp`）を省略したもので、気にしなくて大丈夫です。
 
 接続情報は次のとおりです。
 
@@ -322,7 +333,7 @@ SELECT version();
 (1 row)
 ```
 
-```sql
+```text
 \dt
 ```
 
@@ -379,7 +390,7 @@ Pylance は、コードに書いた型ヒントをもとに「`int` を渡すは
 
 - [ ] `docker version` で Client と Server の両方が表示される
 - [ ] `uv --version` でバージョンが表示される
-- [ ] `python --version` で 3.12 以上が表示される
+- [ ] `uv run python --version` で 3.12 以上が表示される
 - [ ] `docker compose ps` の STATUS が `Up`（または `Up ... (healthy)`）になっている
 - [ ] `psql` で `SELECT version();` が実行できる
 - [ ] `uv run mkdocs serve` でテキストがブラウザに表示される
