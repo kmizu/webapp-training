@@ -27,7 +27,7 @@
 
 !!! note "クライアント/サーバーモデル"
     PostgreSQL は **サーバー** として動き続け、**クライアント** からの接続を待ち受けています。
-    第0章で Docker で起動した `webapp-training-db` がそのサーバーです。
+    第0章で Docker に立てた `webapp-training-db` がそのサーバーです。
 
     クライアントは「PostgreSQL に接続して SQL を送る側」の総称です。
     第3〜4章で使った psql もクライアントのひとつで、この章で書く Python スクリプトは
@@ -117,7 +117,7 @@ uv run --with 'psycopg[binary]' python practice/check_connection.py
 期待される出力（バージョンやコンパイラの部分は環境によって変わります）:
 
 ```text
-接続成功: PostgreSQL 16.2 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 10.2.1 20210130 (Red Hat 10.2.1-11), 64-bit
+接続成功: PostgreSQL 16.x (...) on x86_64-pc-linux-gnu, compiled by gcc ...
 ```
 
 `接続成功:` と表示されれば、Python から PostgreSQL への通信路が確立できています。
@@ -307,11 +307,12 @@ ModuleNotFoundError: No module named 'psycopg'
 ### 接続が拒否される（Connection refused）
 
 ```text
-psycopg.OperationalError: connection failed: connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused
+psycopg.OperationalError: connection failed: connection to server at "127.0.0.1", port 5432 failed: Connection refused
 	Is the server running on that host and accepting TCP/IP connections?
 ```
 
-（メッセージの細部は環境によって多少変わります）
+（環境によっては `connection to server at "localhost" (::1), port 5432 failed` のように
+ホスト名付きで表示されることもあります。いずれも `Connection refused` が目印です）
 
 **PostgreSQL のコンテナが起動していない**サインです。
 `docker compose up -d` を実行し、`docker compose ps` で `STATUS` が `Up` に
