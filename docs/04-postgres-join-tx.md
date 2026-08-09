@@ -199,15 +199,32 @@ PostgreSQL はもちろん対応しているので、こちらを使うのがお
 - `tags` … タグそのものの一覧
 - `todo_tags` … 「どの ToDo に、どのタグが付いているか」の対応表（**中間テーブル**）
 
-```text
-todos            todo_tags           tags
- id | title       todo_id | tag_id    id | name
-----+--------     --------+--------   ----+------
-  1 | 牛乳を買う        1 |      1      1 | 家事
-  2 | 健康診断…         2 |      3      2 | 仕事
- ...                ...               3 | 健康
-```
+`todos`（既存。抜粋）:
 
+| id | title |
+|---:|---|
+| 1 | 牛乳を買う |
+| 2 | 健康診断の予約 |
+| ... | ... |
+
+`todo_tags`（中間テーブル）:
+
+| todo_id | tag_id |
+|---:|---:|
+| 1 | 1 |
+| 2 | 3 |
+
+`tags`:
+
+| id | name |
+|---:|---|
+| 1 | 家事 |
+| 2 | 仕事 |
+| 3 | 健康 |
+
+なお、3 つの表で**行の縦の並び位置に対応関係はありません**。
+「どの ToDo にどのタグか」の対応は、`todo_tags` の行が持つ値
+（`todo_id` と `tag_id` の組）だけが表しています。
 「`todos` の `id`」と「`tags` の `id`」の**組**を中間テーブルに持つ、という形です。
 この形にしておけば、1 つの ToDo にタグをいくつ付けても、
 1 つのタグをいくつの ToDo に付けても対応できます。
@@ -237,9 +254,12 @@ CREATE TABLE
 
 - **`REFERENCES todos(id)`** が外部キー制約です。`todo_tags` に、存在しない
   `todo_id` や `tag_id` を挿入できないようにして、参照先が必ず実在することを保証します
-- **`ON DELETE CASCADE`** は、参照先（`todos` や `tags`）の行が消えたときに、
-  対応する `todo_tags` の行も自動で消してくれる設定です。付けないと
-  「存在しない ToDo を指すタグ付け」がゴミとして残ってしまいます
+- **`ON DELETE CASCADE`** は、参照先（`todos` や `tags`）の行を消したときに、
+  対応する `todo_tags` の行も自動で消してくれる設定です。付けなくても外部キー制約は
+  働くので「存在しない ToDo を指すタグ付け」が作られることはありませんが、そのぶん
+  **タグが付いている ToDo を消そうとすると外部キー違反でエラー**になり、
+  先に `todo_tags` の行を消す後片付けが必要になります。`ON DELETE CASCADE` を
+  付けておくと、その後片付けを DB が自動でやってくれます
 - **`PRIMARY KEY (todo_id, tag_id)`** のように複数列の組を主キーにする（**複合主キー**）と、
   「同じ ToDo に同じタグを二重に付ける」ことを防げます
 
@@ -349,7 +369,7 @@ SELECT t.id, t.title, g.name AS tag
       マッチがなければ右側を `NULL` で埋める。「タグの有無に関わらず全 ToDo を
       一覧したい」ときはこちら
     - 逆に右側を必ず残す `RIGHT JOIN`、両方を残す `FULL JOIN` もありますが、
-      実務で使うのは大半が `INNER JOIN` と `LEFT JOIN` です
+      実務で使われるのは `INNER JOIN` と `LEFT JOIN` の 2 つが大半です
 
     どの JOIN も「結合条件（`ON` の後ろ）にマッチする行の組み合わせを作る」点は共通で、
     **マッチしなかった行をどう扱うか**だけが違います。
@@ -448,7 +468,7 @@ COMMIT
 ```sql
 BEGIN;
 INSERT INTO tags (name) VALUES ('読書') RETURNING id;
-INSERT INTO todo_tags (todo_id, tag_id) VALUES (999, 5);
+INSERT INTO todo_tags (todo_id, tag_id) VALUES (999, 5);  -- 5 は上の RETURNING で返った「読書」の id
 SELECT id, name FROM tags WHERE name = '読書';
 ROLLBACK;
 SELECT id, name FROM tags WHERE name = '読書';
