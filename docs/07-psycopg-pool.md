@@ -465,11 +465,13 @@ TypeError: tuple indices must be integers or slices, not str
         print("削除:", cur.rowcount, "件")
     ```
 
-    期待される出力（`id` の数字は、これまでに `INSERT` した回数によって
-    変わります。第6章の練習問題まで済ませた状態なら `15` です）:
+    期待される出力（`id` の数字は、これまでに `INSERT` を試した回数によって
+    変わります。第6章の練習問題まで済ませた状態なら `20` です。
+    ロールバックされたり `NOT NULL` 違反で失敗したりした `INSERT` でも
+    シーケンスの番号は消費されるため、`14` から 6 回分進んで `20` になります）:
 
     ```text
-    追加: {'id': 15, 'title': 'プールの練習', 'done': False}
+    追加: {'id': 20, 'title': 'プールの練習', 'done': False}
     削除: 1 件
     ```
 
