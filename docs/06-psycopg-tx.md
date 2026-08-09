@@ -86,7 +86,7 @@ OK の書き方（`cur.execute(sql, params)` のように SQL 文とパラメー
 psycopg が文字列を組み立ててから送るのではなく、
 **SQL 本体とパラメータを分離したまま** PostgreSQL サーバーに送信します
 （[psycopg のパラメータの渡し方](https://www.psycopg.org/psycopg3/docs/basic/params.html)）。
-サーバー側は「これは値であって SQL の構文ではない」と分かった状態で受け取るので、
+サーバー側は「これは値であって SQL の構文ではない」とわかった状態で受け取るので、
 値の中に `'` や `;` が混じっていても命令として解釈されることがありません。
 
 !!! warning "プレースホルダの `%s` は Python の「% 書式」ではありません"
@@ -128,10 +128,10 @@ uv run --with 'psycopg[binary]' python practice/injection_demo.py
 ```
 
 期待される出力（`id` の数字は、これまでに `INSERT` した回数によって変わります。
-第5章までの手順どおり進めた場合は `10` です）:
+第5章の練習問題まで済ませた状態なら `14` です）:
 
 ```text
-(10, "x'; DROP TABLE todos; --")
+(14, "x'; DROP TABLE todos; --")
 deleted: 1
 ```
 
