@@ -314,6 +314,12 @@ DROP TABLE
 DROP TABLE
 ```
 
+なお、第4章の問5（任意の後片付け問題）で `tags` と `todo_tags` を
+すでに消している人は、最初の 2 行で
+`ERROR: table "todo_tags" does not exist` のようなエラーが出ますが問題ありません。
+`todos` さえ消えれば OK です（エラーを避けたい場合は、
+`DROP TABLE IF EXISTS todo_tags;` のように `IF EXISTS` を付けてください）。
+
 もう一度 `\dt` を実行して `Did not find any relations.` と出れば、
 まっさらな状態に戻っています。
 
@@ -427,6 +433,11 @@ Referenced by:
 `Indexes:` に `idx_todos_done_due`、`Check constraints:` に 2 つの `CHECK` が
 見えていれば、第3章で作った練習用テーブルとは別物の、新しい定義だと確認できます。
 
+なお、`CHECK (priority BETWEEN 1 AND 3)` と書いた制約は、
+`\d` では `CHECK (priority >= 1 AND priority <= 3)` と表示されます。
+`BETWEEN` は内部で `>=` と `<=` の組み合わせに書き換えられて保持されるためで、
+意味はまったく同じです。
+
 最後に、入ったデータを見てみます。
 
 ```sql
@@ -504,7 +515,7 @@ psql:mytodo/migrations/001_init.sql:22: ERROR:  relation "todo_tags" already exi
 デフォルトでは最後まで実行を続けるので、**エラーの有無は終了コードや最後の行ではなく、
 出力をすべて読んで判断する**癖を付けてください。
 
-### `psql: mytodo/migrations/001_init.sql: No such file or directory`
+### `psql: error: mytodo/migrations/001_init.sql: No such file or directory`
 
 `psql -f` に渡すパスは、**コマンドを実行した場所からの相対パス**です。
 この章のコマンドはリポジトリのルートで実行する前提なので、
@@ -615,6 +626,7 @@ ToDo に「メモ」（任意の補足説明）を持たせたくなりました
 
     ```text
     ERROR:  new row for relation "todos" violates check constraint "todos_title_check"
+    DETAIL:  Failing row contains (5, , f, null, 2, 2026-08-14 00:21:33.164587+09, 2026-08-14 00:21:33.164587+09).
     ```
 
     ```sql
@@ -625,7 +637,10 @@ ToDo に「メモ」（任意の補足説明）を持たせたくなりました
 
     ```text
     ERROR:  new row for relation "todos" violates check constraint "todos_priority_check"
+    DETAIL:  Failing row contains (6, テスト, f, null, 9, 2026-08-14 00:21:33.207399+09, 2026-08-14 00:21:33.207399+09).
     ```
+
+    （`DETAIL:` 行の id とタイムスタンプは実行環境によって変わります。）
 
     どちらも DB が挿入を拒否しています。
     `psql` から直接打ったこの経路でも制約が働く——これが、
