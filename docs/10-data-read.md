@@ -17,12 +17,13 @@
 - `mytodo/` を uv プロジェクトにして、依存パッケージをインストールできる
 - `config.py` / `db.py` / `models.py` / `repositories.py`（Read系）/ `cli.py` を
   写経し、`diff` で完成版と答え合わせできる
-- `uv run python -m app.cli init-db` でマイグレーションの管理を cli に切り替えられる
+- `uv run python -m app.cli init-db` でマイグレーションの管理を `cli.py` に切り替えられる
 - Read 系のリポジトリ関数で ToDo とタグを読み出せる
 
 **所要時間の目安: 120 分**
 
-この章で作るファイルは 6 つと、動作確認用の小さなスクリプトが 1 つです。
+この章で作るファイルは 7 つ（`pyproject.toml` と `app/` 配下の 6 つ）と、
+動作確認用の小さなスクリプトが 1 つです。
 量はありますが、1 つずつ写経しては `diff` で答え合わせする、
 という同じリズムの繰り返しです。
 
@@ -203,9 +204,9 @@ mkdir app
 ### `app/__init__.py`（空ファイル）
 
 `mytodo/app/__init__.py` を**中身は空のまま**作成してください。
-このファイルは「`app/` は Python のパッケージである」という目印です
-（第2章で見たとおりです）。空でないと `from app.db import ...` のような
-import ができません。
+このファイルは「`app/` は Python のパッケージである」という目印です。
+`__init__.py` がなくても import できる環境（namespace package）もありますが、
+挙動が環境に依存するため、目印として明示的に置くのが定石です。
 
 ### `app/config.py`
 
@@ -244,8 +245,8 @@ DB の接続先などの設定を、**環境変数**から読むクラスです�
 パスワード `todo` / DB `tododb`）と一致しているので、
 研修の環境では環境変数を何も設定しなくても動きます。
 
-`dsn` は第7章で自分で書いた `build_dsn()` と同じものを、
-`@property` として持たせた形です。`settings.dsn` と書くだけで
+`dsn` は第5〜7章で直書きしていた DSN（接続文字列）と同じ内容を、
+`@property` として組み立てる形にしたものです。`settings.dsn` と書くだけで
 接続文字列が得られます。`frozen=True` は「作成後に書き換えられない
 dataclass」という指定で、設定がうっかり書き換わるのを防ぎます。
 
@@ -317,7 +318,7 @@ diff -u mytodo/app/db.py sample/todo-app/app/db.py
 第9章ではマイグレーションを `psql -f` で手で流し込みました。
 そして「`cli.py` の写経は第10章で `db.py` を作ってから」と予告していました。
 `db.py` ができたので、ここで `cli.py` を写経し、
-**マイグレーションの管理を cli に引き継ぎます**。
+**マイグレーションの管理を `cli.py` に引き継ぎます**。
 
 `mytodo/app/cli.py` を作成して、次の内容を書き写してください。
 
@@ -410,7 +411,7 @@ if __name__ == "__main__":
 「テーブルはもうある」というエラー（`DuplicateTable`）で止まります。
 
 そこで、今回に限り **`reset-db` で一度まっさらにしてから `init-db` で作り直す**
-ことで、管理を cli に切り替えます。中身は同じマイグレーションファイルから
+ことで、管理を `cli.py` に切り替えます。中身は同じマイグレーションファイルから
 作られるので、結果的に同じテーブルと同じ初期データに戻ります。
 
 `mytodo/` の中で次を実行してください。
@@ -776,7 +777,8 @@ with connection() as conn:
 uv run python try_read.py
 ```
 
-期待される出力（`due_on` の日付は、シードデータを適用した日によって変わります）:
+期待される出力（`due_on` の日付は、シードデータを適用した日によって変わります。
+以下は 2026-08-14 に適用した場合の一例です）:
 
 ```text
 --- list_todos(open) ---
@@ -841,7 +843,7 @@ diff -u mytodo/app/repositories.py sample/todo-app/app/repositories.py
 - [ ] `mytodo/pyproject.toml` を作成し、`mytodo/` の中で `uv sync` できた
 - [ ] `__init__.py` / `config.py` / `db.py` / `cli.py` / `models.py` を写経し、
       `diff` で完成版との一致を確認した
-- [ ] `reset-db` → `init-db` でマイグレーション管理を cli に切り替え、
+- [ ] `reset-db` → `init-db` でマイグレーション管理を `cli.py` に切り替え、
       2 回目の `init-db` が `skip` になることを確認した
 - [ ] `repositories.py` の `diff` で `-` の行がないことを確認した
       （`+` は Write 系だけ。第11章で写経する）
