@@ -202,14 +202,14 @@ mkdir app
 
 ### `app/__init__.py`（空ファイル）
 
-`app/__init__.py` を**中身は空のまま**作成してください。
+`mytodo/app/__init__.py` を**中身は空のまま**作成してください。
 このファイルは「`app/` は Python のパッケージである」という目印です
 （第2章で見たとおりです）。空でないと `from app.db import ...` のような
 import ができません。
 
 ### `app/config.py`
 
-`app/config.py` を作成して、次の内容を書き写してください。
+`mytodo/app/config.py` を作成して、次の内容を書き写してください。
 
 ```python
 import os
@@ -254,7 +254,7 @@ dataclass」という指定で、設定がうっかり書き換わるのを防�
 
 ### `app/db.py`
 
-`app/db.py` を作成して、次の内容を書き写してください。
+`mytodo/app/db.py` を作成して、次の内容を書き写してください。
 
 ```python
 from collections.abc import Iterator
@@ -319,7 +319,7 @@ diff -u mytodo/app/db.py sample/todo-app/app/db.py
 `db.py` ができたので、ここで `cli.py` を写経し、
 **マイグレーションの管理を cli に引き継ぎます**。
 
-`app/cli.py` を作成して、次の内容を書き写してください。
+`mytodo/app/cli.py` を作成して、次の内容を書き写してください。
 
 ```python
 import argparse
@@ -501,7 +501,7 @@ diff -u mytodo/app/cli.py sample/todo-app/app/cli.py
 いよいよアプリの中身です。まず、10.2 で説明した**ドメインモデル**を
 定義する `models.py` を写経します。
 
-`app/models.py` を作成して、次の内容を書き写してください。
+`mytodo/app/models.py` を作成して、次の内容を書き写してください。
 
 ```python
 from dataclasses import dataclass, field
@@ -556,7 +556,7 @@ SQL の中身はこのファイルに閉じ込めます。
     「Write 系のぶんだけ完成版のほうが長い」という差分が出ます。
     それが正しい状態です（差分の見方は 10.9 で説明します）。
 
-`app/repositories.py` を作成して、次の内容を書き写してください。
+`mytodo/app/repositories.py` を作成して、次の内容を書き写してください。
 
 ```python
 import psycopg
@@ -788,9 +788,9 @@ uv run python try_read.py
 牛乳を買う 2026-08-15 2 ['家事']
 None
 --- list_all_tags ---
-1 家事
-3 健康
 2 仕事
+3 健康
+1 家事
 --- list_todos(q='買') ---
 1 牛乳を買う
 ```
@@ -802,8 +802,13 @@ None
   期限なし（`NULLS LAST`）の「過去の領収書を整理」が来ています。
   `ORDER BY` が意図どおり効いている証拠です。
 - `get_todo(conn, 999)` は存在しない `id` なので `None` が返りました。
-- `list_all_tags` は `ORDER BY name` なので、
-  五十音順（家事 → 健康 → 仕事）に並び、`id` 順ではありません。
+- `list_all_tags` は `ORDER BY name` で並んでいますが、
+  **日本語は五十音順にはなりません**。この研修で使う PostgreSQL
+  （`postgres:16` イメージ、デフォルトの照合順序）では、
+  文字列は文字のコードポイント順に並びます。`仕`（U+4ED5）→ `健`（U+5065）
+  → `家`（U+5BB6）の順なので、「仕事 → 健康 → 家事」という
+  一見バラバラに見える並びになります。五十音順に並べたい場合は
+  照合順序（collation）やよみがな列の工夫が必要ですが、この研修では扱いません。
 - `q="買"` で「買」を含むタイトルだけに絞れています。
 
 最後に、この章で作ったファイルの答え合わせをまとめて行います
@@ -822,7 +827,9 @@ diff -u mytodo/app/repositories.py sample/todo-app/app/repositories.py
   `-` は「あなたのファイルにだけある行」なので、出ていたら写経ミスです。
 - **`+`（プラス）で始まる行が、Write 系の関数
   （`create_todo` / `update_todo` / `toggle_done` / `delete_todo` /
-  `attach_tags` / `replace_tags`）と `_UNSET` まわりだけであること**。
+  `attach_tags` / `replace_tags`）と、その部品
+  （先頭の import 2 行 `from datetime import date` / `from typing import Any` と、
+  `_UNSET` の定義まわり）だけであること**。
   `+` は「完成版にだけある行」で、これらは第11章で写経します。
 
 ## 10.10 チェックポイント
