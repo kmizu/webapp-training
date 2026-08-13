@@ -568,6 +568,38 @@ psql は何もしなければ **1 文ごとに即座に確定（オートコミ�
 [トランザクション](https://www.postgresql.org/docs/current/tutorial-transactions.html)の
 詳しい仕組みは次章で扱います。
 
+### 後片付け: id = 1 を未完了に戻す
+
+`COMMIT` したので、`id = 1` は `done = TRUE` のまま残っています。
+このあとの章（第5章以降）の手順や期待出力は、
+**「`done = TRUE` の行は `id = 3`（領収書の整理）だけ」という状態**を前提に書かれています。
+このまま進めると出力がズレてしまうので、同じ安全習慣
+（`BEGIN` → `UPDATE` → 確認 → `COMMIT`）で元に戻しておきましょう。
+
+```sql
+BEGIN;
+UPDATE todos SET done = FALSE, updated_at = now() WHERE id = 1;
+SELECT id, title, done FROM todos WHERE id = 1;
+COMMIT;
+```
+
+期待される出力:
+
+```text
+BEGIN
+UPDATE 1
+ id |   title    | done 
+----+------------+------
+  1 | 牛乳を買う | f
+(1 row)
+
+COMMIT
+```
+
+`done` が `f` に戻ったこと（after）を確認してから `COMMIT` しています。
+これでテーブルの状態は、3.5 でデータを入れた直後と同じ
+「`done = TRUE` は `id = 3` だけ」に戻りました。
+
 ### DELETE で削除する（今回は取り消してみる）
 
 完了済み（`done = TRUE`）の行を全部消す `DELETE` を試します。
@@ -586,7 +618,7 @@ SELECT id, title, done FROM todos WHERE done = TRUE;
 
 ```text
 BEGIN
-DELETE 2
+DELETE 1
  id | title | done 
 ----+-------+------
 (0 rows)
@@ -595,13 +627,12 @@ ROLLBACK
  id |    title     | done 
 ----+--------------+------
   3 | 領収書の整理 | t
-  1 | 牛乳を買う   | t
-(2 rows)
+(1 row)
 ```
 
-- `DELETE 2` で、完了済みの 2 行（before: `id = 1` と `id = 3`）が消え、
+- `DELETE 1` で、完了済みの 1 行（before: `id = 3`）が消え、
   直後の `SELECT` は `(0 rows)`（after）になりました
-- `ROLLBACK` のあとに同じ `SELECT` を打つと、2 行が元どおり戻っています
+- `ROLLBACK` のあとに同じ `SELECT` を打つと、行が元どおり戻っています
 
 このテーブルは第4章でも使うので、**ここでは `ROLLBACK` で元に戻しておいてください**。
 
@@ -788,6 +819,8 @@ PostgreSQL コンテナが起動していません。リポジトリのルート
 `id = 2` の ToDo を完了（`done = TRUE`）に更新してください。
 本文と同じく、`BEGIN` で始めて、**更新前と更新後の両方を `SELECT` で確認**してから
 `COMMIT` してください。
+確認が終わったら、**最後に `done = FALSE` に戻す**ところまで行ってください
+（第5章以降の前提状態に揃えるための必須手順です）。
 
 ??? example "解答例"
 
@@ -821,9 +854,33 @@ PostgreSQL コンテナが起動していません。リポジトリのルート
     `UPDATE 1` の件数表示で「1 行だけに効いた」ことも確認できました。
     件数が `0` なら `WHERE` の条件（ここでは `id = 2`）を間違えているサインです。
 
-    なお、確認が終わったあと、第4章に向けて元に戻しておきたい場合は
-    `UPDATE todos SET done = FALSE WHERE id = 2;` で戻せます（戻さなくても
-    第4章の手順には影響しません）。
+    最後に、**`id = 2` を `done = FALSE` に戻しておきます（必須）**。
+    第5章以降の手順と期待出力は、「`done = TRUE` の行は `id = 3`（領収書の整理）だけ」
+    という状態を前提に書かれています。ここで戻さないまま進むと、
+    第5章以降の期待出力とズレてしまいます。
+
+    ```sql
+    BEGIN;
+    UPDATE todos SET done = FALSE, updated_at = now() WHERE id = 2;
+    SELECT id, title, done FROM todos WHERE id = 2;
+    COMMIT;
+    ```
+
+    期待される出力:
+
+    ```text
+    BEGIN
+    UPDATE 1
+     id |     title      | done 
+    ----+----------------+------
+      2 | 健康診断の予約 | f
+    (1 row)
+
+    COMMIT
+    ```
+
+    `done` が `f` に戻ったことを確認してから `COMMIT` しています。
+    これで `done = TRUE` の行は `id = 3` だけ、という状態に戻りました。
 
 ### 問5 練習用の行を消して後片付け
 
