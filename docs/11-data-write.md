@@ -37,6 +37,33 @@
 読者の皆さんが作るのは `mytodo/` の中のファイルで、
 写経が終わるたびに完成版と `diff` で答え合わせをします。
 
+まず現在地を確認します。第10章末時点の `mytodo/` は次の構成です。
+
+```text
+mytodo/
+├── pyproject.toml          第10章で作成
+├── uv.lock                 uv sync が自動生成
+├── .venv/                  uv sync が自動生成
+├── app/
+│   ├── __init__.py         第10章で作成（空ファイル）
+│   ├── config.py           第10章で作成
+│   ├── db.py               第10章で作成
+│   ├── cli.py              第10章で作成
+│   ├── models.py           第10章で作成
+│   └── repositories.py     第10章で作成（Read系のみ）← この章で Write 系を追記
+├── migrations/
+│   ├── 001_init.sql        第9章で作成・tododb に適用済み
+│   └── 002_seed.sql        第9章で作成・tododb に適用済み
+├── try_read.py             第10章で作成（使い捨て。残っていても構いません）
+└── try_write.py            この章で作成（動作確認用の使い捨て）
+```
+
+（第9章の「やってみよう」に取り組んだ人は、`migrations/` に
+`003_add_memo.sql` もあるはずです。そのままで大丈夫です。）
+
+この章が触るのは `repositories.py` への追記と `try_write.py` の作成だけで、
+他のファイルには手を付けません。
+
 ## 11.2 前提知識
 
 コードに入る前に、この章の鍵になる 2 つの考え方を押さえておきます。
@@ -143,7 +170,7 @@ from .models import Tag, Todo
 - `Any` …… 次に追加する `_UNSET` の型ヒントで使います。
 
 続けて、`mytodo/app/repositories.py` の import の直後
-（`_row_to_tag` の前）に次の内容を追記する。
+（`_row_to_tag` の前）に次の内容を追記してください。
 
 ```python
 # Sentinel: "due_on を渡さない" と "明示的に NULL" を区別するため
@@ -157,7 +184,7 @@ _UNSET: Any = object()
 ## 11.5 ToDo を作る: `create_todo`
 
 `mytodo/app/repositories.py` の `# ---------- Todo ----------` の直後
-（`list_todos` の前）に次の内容を追記する。
+（`list_todos` の前）に次の内容を追記してください。
 
 ```python
 def create_todo(
@@ -204,7 +231,7 @@ def create_todo(
 
 ## 11.6 部分更新: `update_todo`（この章の山場）
 
-`mytodo/app/repositories.py` の `get_todo` の直後に次の内容を追記する。
+`mytodo/app/repositories.py` の `get_todo` の直後に次の内容を追記してください。
 
 ```python
 def update_todo(
@@ -279,8 +306,11 @@ def update_todo(
   `None` かどうかを判定するときに `== None` ではなく `is None` を使うのと
   同じ理由です。
 - 型ヒントが `date | None | Any` となっているのは、`_UNSET` が
-  `date | None` のどちらでもない特別な値であることを型チェッカーにも
-  伝えるためです。
+  `date | None` のどちらでもない特別な値であることを、
+  **人間の読み手に明示する**のが主目的です。
+  （厳密には、union に `Any` が混ざると型チェッカー上は `Any` と
+  同じ扱いに潰れてしまうので、型チェッカーへの情報としては
+  効いていません。ドキュメントとしての注記と考えてください。）
 - `sets` と `params` は、第10章の `list_todos` の WHERE 句と同じく
   **ペアで、同じ順番に追加**します。どのカラムが指定されたかで
   SET 句の中身が変わるので、`UPDATE` 文は f-string で動的に組み立てています。
@@ -310,7 +340,7 @@ repo.update_todo(conn, t.id, due_on=date(2030, 1, 1))
 
 ## 11.7 完了の切替と削除: `toggle_done` / `delete_todo`
 
-`mytodo/app/repositories.py` の `update_todo` の直後に次の内容を追記する。
+`mytodo/app/repositories.py` の `update_todo` の直後に次の内容を追記してください。
 
 ```python
 def toggle_done(conn: psycopg.Connection, todo_id: int) -> Todo | None:
@@ -364,7 +394,7 @@ def delete_todo(conn: psycopg.Connection, todo_id: int) -> bool:
 
 最後に、11.2 で見た多対多を書き込む側から実装します。
 `mytodo/app/repositories.py` の末尾（`list_tags_for_todo` の後）に
-次の内容を追記する。
+次の内容を追記してください。
 
 ```python
 def attach_tags(conn: psycopg.Connection, todo_id: int, names: list[str]) -> None:
@@ -648,9 +678,11 @@ UNIQUE 制約にぶつかっています。11.8 のコードと見比べてく�
 
     `ON CONFLICT DO NOTHING` のおかげで、何回 attach しても
     `(todo_id, tag_id)` の組は 1 行のままです。
-    確認が終わったら、スクリプトとテスト用の ToDoを片付けておきましょう
-    （`repo.delete_todo(conn, t.id)` をスクリプトに足して再実行するか、
-    psql で `DELETE FROM todos WHERE title = '重複テスト';` を実行します）。
+    確認が終わったら、スクリプトとテスト用の ToDo を片付けておきましょう。
+    確実に片付けるには psql で
+    `DELETE FROM todos WHERE title = '重複テスト';` を実行します
+    （スクリプトに `repo.delete_todo(conn, t.id)` を足して再実行しても、
+    初回の実行で残った行は消えない点に注意してください）。
 
 ### 問2 `title` だけ更新して他のカラムが変わらないことを確かめる
 
@@ -693,10 +725,23 @@ UNIQUE 制約にぶつかっています。11.8 のコードと見比べてく�
     ```
 
     `with connection()` を 3 つに分けているのには理由があります。
-    PostgreSQL の `now()` は **そのトランザクションが始まった時刻** を
-    返すので、更新と取得を同じトランザクション（同じ `with` ブロック）で
-    行うと、`updated_at` が変わっていても同じ時刻に見えてしまいます。
-    接続を分けることで、別々のトランザクションの時刻を比較できます。
+    更新の前後で **コミットを挟み、別トランザクションとして確定した値**を
+    読むほうが、検証として確実だからです。
+
+    !!! note "`now()` はトランザクション開始時刻で固定される"
+        PostgreSQL の `now()` は、呼ばれた時刻ではなく
+        **そのトランザクションが始まった時刻**を返します。
+        そのため、同じトランザクション（同じ `with` ブロック）の中で
+        何度 `now()` を呼んでも同じ値になり、「本来ずれるはずの時刻」
+        同士を同一トランザクション内で比較すると、同じ値に見えることが
+        あります。この性質は、第12章でテストデータの時刻を扱うときにも
+        関係してきます。
+
+    なお、今回の before / after の比較自体は、同一トランザクションで
+    行っても（before はシード投入時の過去の時刻なので）結果は変わりません。
+    それでも接続を分ける書き方を採用しているのは、「更新された行を
+    コミット後に読み直す」という検証の形を毎回同じにしておくほうが
+    癖として安全だからです。
 
     確認が終わったら、`repo.update_todo(conn, 1, title="牛乳を買う")` で
     タイトルを元に戻し、スクリプトを削除しておきましょう。
