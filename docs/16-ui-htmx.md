@@ -239,8 +239,8 @@ def htmx_delete(conn: Conn, todo_id: int):
 1. ユーザーがラジオボタンを切り替える、検索欄に入力するなどする
    （`hx-trigger` で指定したタイミング）。
 2. htmx が `hx-get` の URL（`/partials/list`）に GET を送る。
-   `hx-include="this"` により、フォーム内の入力値
-   （`filter` と `q`）がクエリパラメータとして付きます。
+   フォーム内の入力値（`filter` と `q`）がクエリパラメータ
+   として付きます（`hx-include` については 16.6 で説明します）。
 3. サーバー（16.4 の `list_partial`）が `_list.html` を描画して
    返す。
 4. htmx が返ってきた断片を `hx-target` の `#todo-list`
@@ -292,11 +292,19 @@ def htmx_delete(conn: Conn, todo_id: int):
 返ってきた一覧の断片で `#todo-list` の中身を差し替えます。
 `hx-trigger` を書いていないので、`<form>` の既定値である
 `submit`（送信時）がトリガになります。`hx-include` も書いて
-いませんが、フォーム要素の場合は**フォーム内の入力値が自動で
-送信に含まれる**ため、書く必要がありません（16.5 のフィルタ
-フォームに `hx-include="this"` があったのは、ラジオボタンや
-検索欄での `change` / `keyup` がトリガのときにフォームの値を
-明示的に含めるためです）。
+いませんが、`hx-post` がフォーム要素自身に付いている場合は
+**フォーム内の入力値が既定ですべて送信に含まれる**ため、
+書く必要がありません。
+
+なお 16.5 のフィルタフォームにあった `hx-include="this"` も、
+実は書かなくても同じ動きになります。あちらも `hx-get` が
+フォーム自身に付いているので、ラジオボタンや検索欄の
+`change` / `keyup` がトリガのときも、フォームの入力値は
+既定でリクエストに含まれるからです。`hx-include` は「どの
+要素の値を一緒に送るか」を CSS セレクタで広げる属性ですが、
+`this`（＝フォーム自身）は既定の範囲と同じなので、
+**「このフォームの値を送る」という意図を読み手に明示する**
+役割だと読んでください。
 
 残る `hx-on::after-request="this.reset()"` は、**リクエストが
 終わったあとにフォームを空にする**指定です。`hx-on::イベント名`
@@ -435,10 +443,10 @@ curl -s "http://127.0.0.1:8000/partials/list?filter=open" | grep 'class="title"'
 期待される出力（シードの 4 件、期限順）:
 
 ```html
-      <td class="title">牛乳を買う</td>
-      <td class="title">健康診断の予約</td>
-      <td class="title">家賃を振り込む</td>
-      <td class="title">過去の領収書を整理</td>
+  <td class="title">牛乳を買う</td>
+  <td class="title">健康診断の予約</td>
+  <td class="title">家賃を振り込む</td>
+  <td class="title">過去の領収書を整理</td>
 ```
 
 `GET /` が返す完全な HTML 文書と違い、`<!doctype html>` や
