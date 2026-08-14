@@ -51,6 +51,7 @@
 
     - **GET** …… 読み取り（一覧・1件取得）。成功すると **200**
     - **POST** …… 新規作成。成功すると **201 Created**
+      （作成以外の POST、たとえば完了切替の toggle は **200**）
     - **PATCH** …… 部分更新（送られたフィールドだけ変える）。
       成功すると **200**
     - **DELETE** …… 削除。成功すると **204 No Content**
@@ -59,10 +60,10 @@
     これに加えて、失敗時のステータスコードが 2 つ登場します。
     **404 Not Found** は「リクエストの形は正しいが、指定された ID の
     ToDo が存在しない」とき。**422 Unprocessable Content** は
-    「リクエストの形そのものが壊れている（必須項目が空、型が違う、
-    範囲外の値）」ときです。この章のルーターでは、404 は自分で
-    `raise HTTPException(...)` して返し、422 は Pydantic の
-    バリデーションが**自動で**返します。
+    「JSON の文法（形）は正しいが、スキーマの制約（必須・型・範囲）を
+    満たさない値が入っている」ときです。この章のルーターでは、
+    404 は自分で `raise HTTPException(...)` して返し、422 は
+    Pydantic のバリデーションが**自動で**返します。
 
 !!! note "Pydantic によるバリデーション"
     第13章で概念を紹介した [Pydantic](https://docs.pydantic.dev/latest/)
@@ -243,8 +244,9 @@ def validate_due_on(due_on: date | None) -> tuple[bool, str | None]:
 
 いよいよ本題です。第13章で写経した骨格を、**完成版に丸ごと
 差し替えます**。骨格の内容（`APIRouter`、`get_conn`、`Conn`）は
-完成版にも同じ形で残りますが、**import 行も含めてすべて置き換わる**
-ので、追記ではなくファイル全体の上書きとしてください。
+完成版にも同じ形で残りますが、import 行が変わる関係で一部分だけの
+書き換えでは済まないため、**骨格と同じ部分も含めて、ファイル全体を
+次の内容で上書きしてください**。
 
 `mytodo/app/routers/todos.py` を、次の内容で**丸ごと上書き**して
 ください。
@@ -371,7 +373,7 @@ def list_tags(conn: Conn):
 - `GET /todos/{todo_id}` …… 1 件取得。なければ **404**
 - `PATCH /todos/{todo_id}` …… 部分更新。なければ **404**
 - `POST /todos/{todo_id}/toggle` …… 完了フラグの切り替え。
-  なければ **404**
+  成功すると **200**、なければ **404**
 - `DELETE /todos/{todo_id}` …… 削除。成功すると **204**、
   なければ **404**
 - `GET /tags` …… タグの一覧
@@ -431,7 +433,7 @@ def list_tags(conn: Conn):
       のバリデーションに失敗すると、**ルーター関数が呼ばれる前に**
       FastAPI が自動で返してくれるからです。
 
-    **422 はリクエストの形そのものが壊れているとき**、
+    **422 は JSON の形は正しいがスキーマの制約を満たさないとき**、
     **404 はリクエストの形は正しいが対象が見つからないとき**、
     と覚えておくと迷いません。
 
@@ -1101,7 +1103,7 @@ diff -u mytodo/app/repositories.py sample/todo-app/app/repositories.py
   `TodoOut.model_validate(...)` で返すだけ。
   HTTP メソッドとステータスコード（201 / 204 / 404）の対応は
   デコレータと `HTTPException` で表現する
-- **422 は Pydantic が自動で返す**（リクエストの形が壊れている）、
+- **422 は Pydantic が自動で返す**（スキーマの制約を満たさない）、
   **404 は自分で `raise` する**（対象が見つからない）
 - 部分更新は `model_dump(exclude_unset=True)` で「送られたキー」を
   判定し、`_UNSET`（`repositories.py` から import）で
