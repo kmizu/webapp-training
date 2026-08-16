@@ -1,5 +1,5 @@
 site_name: Python + PostgreSQL ToDoアプリ研修
-site_description: Python と PostgreSQL の基礎を踏まえて、小さな ToDo アプリを段階的に作る研修テキスト
+site_description: Python の文法は知っているが実用プログラムを書いたことがない人が、小さな ToDo アプリ（FastAPI + PostgreSQL）を写経して完成させる研修テキスト
 site_author: 水島宏太
 site_url: https://kmizu.github.io/webapp-training/
 
