@@ -204,8 +204,10 @@ HTTP 200
 IP アドレスを調べるだけです。
 
 ```bash
-# Linux / macOS
+# Linux
 ip addr show | grep inet
+# macOS
+ipconfig getifaddr en0    # Wi-Fi の場合。空なら ifconfig | grep inet で探す
 # Windows (PowerShell)
 ipconfig
 ```
@@ -218,8 +220,14 @@ ipconfig
     inet 192.168.1.10/24 ... scope global ...
 ```
 
-`grep inet` は `inet6`（IPv6 アドレス）の行にもヒットするため、実際の
-出力には `inet6 fe80::...` のような行も混ざります。見るのは `inet` で
+macOS の `ipconfig getifaddr en0` は `192.168.1.10` のようにアドレスだけが
+返ります（`en0` は多くの Mac で Wi-Fi のインターフェース名です）。
+Windows の `ipconfig` は `IPv4 アドレス ... : 192.168.1.10` のような
+行を探してください。
+
+Linux の `ip addr` や macOS の `ifconfig` にパイプする `grep inet` は
+`inet6`（IPv6 アドレス）の行にもヒットするため、実際の出力には
+`inet6 fe80::...` のような行も混ざります。見るのは `inet` で
 始まる行だけでOKです。
 
 サーバーを `uv run uvicorn app.main:app --host 0.0.0.0 --port 8000` で
@@ -268,6 +276,10 @@ CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "800
   軽量イメージを使い、OS やインタプリタをゼロから用意する手間を省いて
   います。`3.12` と minor バージョンまで指定することで、手元と同じ
   Python 系で動かせます。
+- **`ENV UV_LINK_MODE=copy`**: イメージの中の環境変数を設定します。
+  uv はパッケージの設置にハードリンクを使おうとしますが、コンテナの
+  ファイルシステムではうまくいかないことがあるため、コピー方式に
+  切り替えるおまじないです。
 - **`RUN pip install uv`**: イメージの中に uv をインストールします。
   教材では簡単のためバージョンは未固定ですが、実務では
   `pip install uv==<バージョン>` のように固定すると再現性がさらに
@@ -377,9 +389,12 @@ HTTP 200
 |---|---|---|
 | 自分の PC だけ | そのまま `uvicorn` | 一番気楽 |
 | 家庭内 LAN | 18.5 の手順 | 同じ Wi-Fi の端末から触れる |
-| 個人で軽く外に出したい | [Fly.io](https://fly.io/) / [Render](https://render.com/) | 無料枠あり。18.6 のイメージが使える |
+| 個人で軽く外に出したい | [Fly.io](https://fly.io/) / [Render](https://render.com/) | 18.6 のイメージがそのまま使える |
 | 自由度が欲しい | VPS（さくら / Vultr / DigitalOcean） | ssh と nginx の知識が要る |
 | 仕事で使う | クラウド（AWS / GCP / Azure） | 本研修の範囲外 |
+
+無料枠や料金体系は変わりやすいので、実際に使うときは各社の最新情報を
+確認してください。
 
 外に出す場合は最低限、次の 4 点を押さえてください。
 
@@ -438,7 +453,10 @@ HTTP 200
 {"detail":"internal server error"}
 ```
 
-このとき uvicorn 側のログには `ERROR todo-app - unhandled error:
+このとき curl の応答は**すぐには返りません**。コネクションプールが
+接続を試し続け、タイムアウト（既定で 30 秒）するまで待つためです。
+無応答に見えますがハングではないので、じっと待ってください。
+uvicorn 側のログには `ERROR todo-app - unhandled error:
 GET /api/todos` に続いてスタックトレースが残っているはずです。
 「本番で 500 が出たら、まず環境変数の渡し漏れや値の誤りを疑い、
 ログを見る」という本番運用の基本を体験する良い機会です。
@@ -503,7 +521,16 @@ GET /api/todos` に続いてスタックトレースが残っているはずで�
 
     本番では、普段は `INFO` で運用し、調査が必要なときだけ `DEBUG` に
     下げる、といった切り替えを**環境変数の付け替えだけ**でできることが
-    わかります。確認したら `Ctrl+C` で止めてください。
+    わかります。観察できたら元に戻します。uvicorn 側のターミナルで
+    `Ctrl+C` を押して止め、今度は `LOG_LEVEL` を付けない通常の本番相当
+    コマンドで起動し直してください（`config.py` のデフォルトは
+    `INFO` なので、リクエストログが再び出るはずです）。
+
+    ```bash
+    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ```
+
+    確認したら `Ctrl+C` で止めてください。
 
 ### 問2 わざと間違った環境変数で起動して 500 を観察する
 
@@ -524,7 +551,10 @@ GET /api/todos` に続いてスタックトレースが残っているはずで�
     起動自体は成功します。第7章で導入した `ConnectionPool` は初めて
     利用されるまで生成が遅延される（`db.py` の `get_pool()`）ため、
     起動時点ではまだ DB に接続していないからです。
-    別のターミナルで API を叩きます。
+    別のターミナルで API を叩きます。**応答まで最大で約 30 秒かかる
+    ので、じっと待ってください**（コネクションプールが接続を試し続け、
+    タイムアウトするまで待つためです。無応答に見えますがハングでは
+    ありません）。
 
     ```bash
     curl -s -w "\nHTTP %{http_code}\n" http://127.0.0.1:8000/api/todos
@@ -538,10 +568,24 @@ GET /api/todos` に続いてスタックトレースが残っているはずで�
     ```
 
     想定外の例外（接続エラー）が、フォールバックハンドラで定型の 500 に
-    変換されました。uvicorn 側のターミナルには
-    `ERROR todo-app - unhandled error: GET /api/todos` に続いて
-    スタックトレース（`psycopg.OperationalError` などの接続エラー）が
-    残っています。利用者には定型文だけが返り、原因調査に必要な情報は
+    変換されました。
+
+    この間、uvicorn 側のターミナルはかなり賑やかになります。待っている
+    間はコネクションプールからの WARNING が定期的に流れ続けます。
+
+    ```text
+    2026-08-16 09:46:15,670 WARNING psycopg.pool - error connecting in 'pool-1': connection failed: ...
+    ```
+
+    そして約 30 秒後に、いつもの ERROR 行と、uvicorn 自身の
+    `ERROR:    Exception in ASGI application` というトレースバックが
+    出ます。`ERROR todo-app - unhandled error: GET /api/todos` の
+    スタックトレースの最後は
+    `psycopg_pool.PoolTimeout: couldn't get a connection after 30.00 sec`
+    です（プールがタイムアウトした、という例外で、内側の原因である
+    接続エラーの詳細はさきほどの WARNING の行に出ています）。
+
+    利用者には定型文だけが返り、原因調査に必要な情報は
     ログに確実に残る、という第17章の方針どおりの動きです。
 
     本番で 500 に遭遇したら、こうしてログを見て環境変数の誤りに
