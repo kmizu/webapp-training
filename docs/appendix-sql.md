@@ -9,8 +9,12 @@
   psql で `tododb` に接続し（A.1 参照）、実行例をそのままコピペして試せます
 - 実行例のデータは、第3章で作った `todos` テーブル（7 行、
   `done = TRUE` は `id = 3`「領収書の整理」のみ）と、
-  第4章で作った `tags` / `todo_tags` が前提です。
-  第3章・第4章の手順どおりに進めていれば、出力もそのまま再現します
+  第4章 4.5 で `tags` / `todo_tags` を作った直後の状態
+  （タグ 3 件、紐付け 4 行）が前提です
+- 第4章の 4.6 や「やってみよう」まで進めてタグを増やした場合や、
+  問5 で `tags` / `todo_tags` を消した場合は、A.7 の前提節にある
+  リセット手順で状態を戻してから試してください
+  （そのままだと A.7 の出力が変わり、A.8 の例が UNIQUE 制約違反になります）
 - 変更系の例（`INSERT` / `UPDATE` / `DELETE` / DDL）を実行すると前提状態が変わり、
   後続の例の出力（行数や件数）と一致しなくなります。変更系の例には
   「後片付け」の手順を付けてあるので、試したあとは必ず元に戻してください。
@@ -26,6 +30,8 @@
     ```bash
     psql -h localhost -p 5432 -U todo -d tododb
     ```
+
+    パスワードを聞かれたら `todo` と入力します（入力中は画面に何も表示されません）。
 
 === "コンテナの中で psql を使う"
 
@@ -146,6 +152,9 @@ CREATE TABLE
 ALTER TABLE
 ALTER TABLE
 ```
+
+この例をここまでで止めると `practice_notes` テーブルが残ります。
+次の `DROP TABLE` の例が後片付けを兼ねているので、続けて実行してください。
 
 ### DROP TABLE: テーブルを消す
 
@@ -497,6 +506,12 @@ SELECT id, title, due_on FROM todos WHERE due_on IS NOT NULL;
 「今日から 7 日以内」という条件は、`current_date`（今日の日付）に
 整数を足して書けます（第3章の「やってみよう」問3 で使用）。
 
+構文:
+
+```sql
+SELECT 列名, ... FROM テーブル名 WHERE 日付列 <= current_date + 日数;
+```
+
 実行例（未完了で、期限が今日から 7 日以内の ToDo を期限が近い順に）:
 
 ```sql
@@ -750,6 +765,30 @@ INSERT INTO todo_tags (todo_id, tag_id) VALUES
     (2, 3),  -- 健康診断の予約 → 健康
     (7, 3);  -- 歯医者の予約 → 健康
 ```
+
+!!! note "第4章を最後まで進めた場合のリセット手順"
+    第4章の 4.6 や「やってみよう」でタグを追加した状態、または問5 で
+    `tags` / `todo_tags` を消した状態から A.7 以降の例を試すときは、
+    先に次の手順で前提状態に戻してください
+    （`todo_tags` → `tags` の順に消すのは、外部キーで `todo_tags` が
+    `tags` を参照しているためです）。
+
+    ```sql
+    DROP TABLE IF EXISTS todo_tags;
+    DROP TABLE IF EXISTS tags;
+    ```
+
+    期待される出力（テーブルが存在しない場合は
+    `NOTICE:  table "..." does not exist, skipping` が出るだけで、
+    エラーにはなりません）:
+
+    ```text
+    DROP TABLE
+    DROP TABLE
+    ```
+
+    そのあと、上の `CREATE TABLE` と `INSERT` を再実行すれば、
+    タグ 3 件・紐付け 4 行の前提状態に戻ります。
 
 ### INNER JOIN: マッチする行だけ
 
